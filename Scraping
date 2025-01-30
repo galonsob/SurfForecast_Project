@@ -1,0 +1,58 @@
+import requests
+from bs4 import BeautifulSoup
+import json
+
+# Define the URL for scraping
+# In this case we'll scrape data off the Playa de Esteiro spot
+
+url = "https://www.surf-forecast.com/breaks/Playade-Esteiro/forecasts/latest"
+
+# Fetch the page content
+
+response = requests.get(url)
+soup = BeautifulSoup(response.content, "html.parser")
+
+# Find all wave forecast cells
+forecast_cells = soup.find_all('td', class_='forecast-table__cell forecast-table-wave-height__cell')
+
+forecast_data = []
+
+# Iterate through each forecast cell
+for cell in forecast_cells:
+    date = cell.get('data-date')
+    
+    # Extract JSON-like swell and wind data
+    swell_data_raw = cell.get('data-swell-state')
+    wind_data_raw = cell.get('data-wind')
+    wind_state_raw = cell.get('data-wind-state')
+
+    # Parse JSON-like strings
+    swell_data = json.loads(swell_data_raw) if swell_data_raw else {}
+    wind_data = json.loads(wind_data_raw) if wind_data_raw else {}
+    wind_state_data = json.loads(wind_state_raw) if wind_state_raw else {}
+
+    # Extract desired swell and wind attributes
+    primary_swell = swell_data[0] if swell_data else {}
+    swell_height = primary_swell.get('height', "N/A")
+    swell_period = primary_swell.get('period', "N/A")
+    swell_direction = primary_swell.get('letters', "N/A")
+    
+    wind_speed = wind_data.get('speed', "N/A")
+    wind_direction = wind_data.get('direction', {}).get('letters', "N/A")
+    wind_state = wind_state_data.get('text', "N/A")
+
+    # Append data to forecast list
+    forecast_data.append({
+        "date": date,
+        "swell_height": swell_height,
+        "swell_period": swell_period,
+        "swell_direction": swell_direction,
+        "wind_speed": wind_speed,
+        "wind_direction": wind_direction,
+        "wind_state": wind_state
+    })
+
+# Print the parsed forecast data for validation
+for entry in forecast_data:
+    print(f"Date: {entry['date']}, Swell: {entry['swell_height']}m {entry['swell_direction']} ({entry['swell_period']}s), "
+          f"Wind: {entry['wind_speed']} km/h {entry['wind_direction']} ({entry['wind_state']})")
